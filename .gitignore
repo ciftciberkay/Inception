@@ -1,0 +1,6 @@
+secrets/
+.DS_Store
+*.utm/
+*.qcow2
+*.img
+*.iso

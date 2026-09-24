@@ -1,0 +1,101 @@
+services:
+  mariadb:
+    image: mariadb:inception
+    container_name: mariadb
+    build: ./requirements/mariadb
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?}
+      MYSQL_USER: ${MYSQL_USER:?}
+    secrets:
+      - db_password
+      - db_root_password
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - inception
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  wordpress:
+    image: wordpress:inception
+    container_name: wordpress
+    build: ./requirements/wordpress
+    restart: always
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME:?}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?}
+      MYSQL_USER: ${MYSQL_USER:?}
+      WP_ADMIN_USER: ${WP_ADMIN_USER:?}
+      WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL:?}
+      WP_USER: ${WP_USER:?}
+      WP_USER_EMAIL: ${WP_USER_EMAIL:?}
+      WP_TITLE: ${WP_TITLE:?}
+    secrets:
+      - db_password
+      - wp_admin_password
+      - wp_user_password
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - inception
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /var/www/html/wp-config.php && php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  nginx:
+    image: nginx:inception
+    container_name: nginx
+    build: ./requirements/nginx
+    restart: always
+    ports:
+      - "443:443"
+    secrets:
+      - tls_cert
+      - tls_key
+    volumes:
+      - wp_data:/var/www/html:ro
+    networks:
+      - inception
+    depends_on:
+      wordpress:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t -q && test -f /var/www/html/index.php"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  inception:
+    driver: bridge
+
+volumes:
+  db_data:
+    name: inception_db_data
+  wp_data:
+    name: inception_wp_data
+
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  db_root_password:
+    file: ../secrets/db_root_password.txt
+  wp_admin_password:
+    file: ../secrets/wp_admin_password.txt
+  wp_user_password:
+    file: ../secrets/wp_user_password.txt
+  tls_cert:
+    file: ../secrets/tls.crt
+  tls_key:
+    file: ../secrets/tls.key

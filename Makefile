@@ -1,0 +1,53 @@
+COMPOSE = docker compose --env-file srcs/.env -f srcs/docker-compose.yml
+
+.DEFAULT_GOAL := all
+.PHONY: all setup check build up down restart logs ps config verify clean fclean
+
+all: up
+
+setup:
+	./srcs/requirements/tools/setup.sh
+
+check:
+	@test -f srcs/.env || { echo "Run make setup first"; exit 1; }
+	@test -f secrets/db_password.txt || { echo "Run make setup first"; exit 1; }
+	@test -f secrets/db_root_password.txt || { echo "Run make setup first"; exit 1; }
+	@test -f secrets/wp_admin_password.txt || { echo "Run make setup first"; exit 1; }
+	@test -f secrets/wp_user_password.txt || { echo "Run make setup first"; exit 1; }
+	@test -f secrets/tls.crt || { echo "Run make setup first"; exit 1; }
+	@test -f secrets/tls.key || { echo "Run make setup first"; exit 1; }
+	@docker info >/dev/null 2>&1 || { echo "Start Docker Desktop first"; exit 1; }
+	@if [ "$$(uname -s)" = Linux ]; then \
+		. srcs/.env; actual=$$(docker info --format '{{.DockerRootDir}}'); \
+		test "$$actual" = "/home/$$LOGIN/data/docker" || { echo "Configure Docker data root first"; exit 1; }; \
+	fi
+
+config: check
+	$(COMPOSE) config
+
+build: check
+	$(COMPOSE) build
+
+up: check
+	$(COMPOSE) up --build -d --wait
+
+down: check
+	$(COMPOSE) down
+
+restart: check
+	$(COMPOSE) restart
+	$(COMPOSE) up -d --wait
+
+logs: check
+	$(COMPOSE) logs -f --tail=100
+
+ps: check
+	$(COMPOSE) ps
+
+verify: check
+	./srcs/requirements/tools/verify.sh
+
+clean: down
+
+fclean: check
+	$(COMPOSE) down --volumes --rmi local
