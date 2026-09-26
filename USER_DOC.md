@@ -6,7 +6,7 @@ NGINX serves the website over HTTPS. WordPress supplies content and administrati
 
 ## Start and stop
 
-Start Docker Desktop. Run commands from repository root:
+Start Docker Engine. Run commands from repository root:
 
 ```sh
 make            # build and start
@@ -16,15 +16,15 @@ make down       # stop; preserve data
 make restart    # restart containers
 ```
 
-`make fclean` removes project containers, images, and volumes. It deletes both persistent datasets. Use it only for a full reset.
-
 ## Website and administration
 
-Add this line to macOS `/etc/hosts`:
+On a Linux VM, map the domain to the VM's IP address in the browser machine's hosts file:
 
 ```text
-127.0.0.1 beciftci.42.fr
+<VM_IP> beciftci.42.fr
 ```
+
+For a macOS Docker Desktop preview, use `127.0.0.1` instead.
 
 Open `https://beciftci.42.fr/` for the site and `https://beciftci.42.fr/wp-admin/` for administration. The TLS certificate is self-signed. Trust it locally or accept the browser warning for this local project.
 
@@ -36,4 +36,4 @@ Nonsecret settings reside in tracked `srcs/.env`. Update email addresses before 
 
 ## Check service health
 
-Run `make verify` for containers, ports, volumes, users, and HTTPS. Inspect logs with `make logs`. Docker Desktop stores named volumes inside its Linux VM; inspect them with `docker volume inspect inception_db_data inception_wp_data`. Check Mac free space with `df -h`.
+Run `make verify` for containers, ports, volumes, users, and HTTPS. Inspect logs with `make logs`. On Linux, the two named volumes reside under `/home/beciftci/data/docker/volumes/`. Inspect them with `docker volume inspect inception_db_data inception_wp_data`. Check free space with `df -h`.

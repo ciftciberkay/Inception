@@ -6,17 +6,18 @@
 
 Inception runs WordPress through three locally built Docker images: NGINX, WordPress with PHP-FPM, and MariaDB. NGINX alone publishes HTTPS port 443. A private Docker network connects the services. Two named volumes preserve website and database files. Each image starts from `debian:12`.
 
+`srcs/docker-compose.yml` defines the stack. The three directories in `srcs/requirements/` contain its Dockerfiles and configuration. `srcs/requirements/tools/` contains setup scripts.
+
 ## Instructions
 
-Install [Docker Desktop for Apple silicon](https://docs.docker.com/desktop/setup/install/mac-install/) and start it. Docker Desktop includes Docker Compose. From the repository root:
+The subject requires a Linux virtual machine. Install Docker Engine and Compose there, then follow [DEV_DOC.md](DEV_DOC.md) to place Docker data beneath `/home/beciftci/data`. From the repository root:
 
 ```sh
-make setup
 make
 make verify
 ```
 
-Map `beciftci.42.fr` to `127.0.0.1` in macOS `/etc/hosts`, or test with `curl --resolve beciftci.42.fr:443:127.0.0.1`. Open `https://beciftci.42.fr/`. The generated certificate is self-signed.
+`make` creates ignored local credentials on first use. Map `beciftci.42.fr` to the VM's IP address on the machine opening the site. Open `https://beciftci.42.fr/`. The generated certificate is self-signed. On macOS, Docker Desktop can preview the stack with `127.0.0.1`, but its volume paths do not meet the subject's host-path requirement.
 
 See [USER_DOC.md](USER_DOC.md) for operation and [DEV_DOC.md](DEV_DOC.md) for setup and Linux submission notes. Keep `secrets/` out of Git. Tracked `srcs/.env` holds nonsecret settings.
 
@@ -32,7 +33,7 @@ See [USER_DOC.md](USER_DOC.md) for operation and [DEV_DOC.md](DEV_DOC.md) for se
 
 ### Virtual machines versus Docker
 
-Docker Desktop runs a Linux virtual machine internally on macOS. Containers share its Linux kernel. This setup needs no separately managed UTM VM for development. The assignment brief explicitly requires a VM and data under `/home/<login>/data`; macOS Docker Desktop cannot demonstrate those host-side requirements. Use the documented Linux setup for strict evaluation.
+The subject requires a personal Linux VM. Docker containers share its Linux kernel but isolate individual services. Docker Desktop also runs a Linux VM internally on macOS; this local preview does not demonstrate the required host data path.
 
 ### Secrets versus environment variables
 
@@ -44,7 +45,7 @@ The named bridge network allows service-name discovery. Compose publishes only N
 
 ### Docker volumes versus bind mounts
 
-Named volumes preserve data across container replacement. Docker Desktop stores them inside its Linux VM. On Linux with the configured Docker data root, they reside beneath `/home/beciftci/data/docker/volumes/`.
+Named volumes preserve data across container replacement. On Linux with the configured Docker data root, they reside beneath `/home/beciftci/data/docker/volumes/`. Bind mounts do not supply persistent website or database files.
 
 ## Resources
 
