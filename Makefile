@@ -1,6 +1,5 @@
 COMPOSE = docker compose --env-file srcs/.env -f srcs/docker-compose.yml
 
-.DEFAULT_GOAL := all
 .PHONY: all setup check build up down restart logs ps
 
 all: up

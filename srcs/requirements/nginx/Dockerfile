@@ -1,12 +1,10 @@
 FROM debian:12
 
 RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nginx ca-certificates \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nginx \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /var/www/html
+    && rm -f /etc/nginx/sites-enabled/default
 
-COPY conf/inception.conf /etc/nginx/sites-available/inception.conf
-RUN rm -f /etc/nginx/sites-enabled/default \
-    && ln -s /etc/nginx/sites-available/inception.conf /etc/nginx/sites-enabled/inception.conf
+COPY conf/inception.conf /etc/nginx/sites-enabled/inception.conf
 
 CMD ["nginx", "-g", "daemon off;"]
