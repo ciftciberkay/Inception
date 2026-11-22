@@ -1,68 +1,70 @@
 # Developer documentation
 
-The subject requires a Linux virtual machine. The macOS Docker Desktop setup below previews the stack; it cannot prove the required host volume paths.
+## Prepare the virtual machine
 
-## macOS setup
+Use a dedicated Linux VM with a `beciftci` user and sudo access. Install Git, Make, OpenSSL, and curl. Install Docker Engine, Buildx, and the Compose plugin using the official instructions for [Debian](https://docs.docker.com/engine/install/debian/) or [Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
 
-Install [Docker Desktop for Apple silicon](https://docs.docker.com/desktop/setup/install/mac-install/) on the M3 Mac. Start it and wait for the engine. Verify:
+Enable Docker at boot and give your VM account access to it. Sign out and back in after changing group membership.
 
 ```sh
-docker version
+sudo systemctl enable --now docker
+sudo usermod -aG docker beciftci
 docker compose version
 ```
 
-The project runs through Docker Desktop. No separately managed UTM VM is needed for development. Docker Desktop operates its own Linux VM internally.
+Configure Docker's data directory before starting the project. Use `sudo install -d /etc/docker`, then `sudoedit /etc/docker/daemon.json`. Add this setting to the JSON object and preserve any existing keys.
 
-## Local configuration
-
-Run `make` in repository root. It creates four password files and a self-signed TLS keypair in ignored `secrets/` before building. Review email addresses in tracked `srcs/.env`. Never put credentials there.
-
-Map `beciftci.42.fr` to `127.0.0.1` in macOS `/etc/hosts`. For a command-line check without editing hosts, use `curl --resolve beciftci.42.fr:443:127.0.0.1`.
-
-## Build and launch
-
-```sh
-make build
-make up
-make ps
-make verify
+```json
+{
+  "data-root": "/home/beciftci/data/docker"
+}
 ```
 
-`make` also builds and starts everything. Compose waits for MariaDB health, then WordPress health, before starting NGINX. Every Dockerfile starts from `debian:12`. WordPress source and WP-CLI download during image build.
+Restart Docker and check the reported path. Docker keeps existing data at the old location when switching directories. If your VM already reports the expected path, skip this change.
 
-## Data and container commands
+```sh
+sudo systemctl restart docker
+docker info --format '{{.DockerRootDir}}'
+```
+
+In the VM, add this line to `/etc/hosts` using `sudoedit /etc/hosts`.
+
+```text
+127.0.0.1 beciftci.42.fr
+```
+
+## Build and operate
+
+Clone the submission repository into an empty directory inside the VM. Run these commands from the repository root.
+
+```sh
+make
+make ps
+```
+
+`srcs/.env` contains nonsecret configuration. `make setup` generates missing passwords and the local TLS certificate in `secrets/`. Both `make build` and `make` run this setup. The default build uses the project Dockerfiles. Compose starts those local images and waits for service health.
+
+Use `make logs` to inspect startup, `make restart` to restart services, and `make down` to stop them. Run Compose directly from the same directory when needed.
 
 ```sh
 docker compose --env-file srcs/.env -f srcs/docker-compose.yml ps
-docker compose --env-file srcs/.env -f srcs/docker-compose.yml logs -f
+docker network ls
 docker volume inspect inception_db_data inception_wp_data
-docker exec wordpress wp --allow-root --path=/var/www/html user list
-docker exec mariadb sh -c 'MYSQL_PWD=$(cat /run/secrets/db_password) mariadb -h 127.0.0.1 -u "$MYSQL_USER" "$MYSQL_DATABASE" -e "SHOW TABLES"'
-make down
-make restart
+docker exec wordpress wp --allow-root user list
+docker exec -it mariadb mariadb -u root -p
 ```
 
-`make down` preserves named volumes. `make up` recreates containers without deleting site content. Monitor disk usage with `df -h`.
+Use the local root password for MariaDB, then run `USE wordpress;` and `SHOW TABLES;`. The two named volumes are under `/home/beciftci/data/docker/volumes/`. One stores MariaDB data. The other stores WordPress files and is shared read-only with NGINX. Container removal and VM reboot preserve both volumes.
 
-The database command reads the application password from its mounted secret. Root login without a password must fail. The root password is in `secrets/db_root_password.txt`.
+## Evaluation
 
-## Linux evaluation
+Open the HTTPS site and confirm that HTTP on port 80 is closed. Check the certificate and TLS using the local certificate file.
 
-For strict evaluation, run this repository in an Ubuntu VM. Install Docker Engine and Compose using `srcs/requirements/tools/install-docker-ubuntu.sh beciftci`, then configure the Docker data root with `srcs/requirements/tools/configure-docker-data-root.sh beciftci`. Run `make setup`, `make`, and `make verify` there. The Makefile verifies the data root on Linux.
+```sh
+curl --cacert secrets/tls.crt --tlsv1.2 --tls-max 1.2 https://beciftci.42.fr/
+curl --cacert secrets/tls.crt --tlsv1.3 https://beciftci.42.fr/
+```
 
-## Acceptance checks
+Comment on a post as `reader`. Edit a page as `siteowner`. Reboot the VM, run `make`, and check that both changes are visible. Approve the comment in the dashboard if moderation is enabled.
 
-1. Confirm three running containers and healthy dependencies.
-2. Check that Docker publishes only NGINX port 443.
-3. Check TLS 1.2 and 1.3; reject older protocols.
-4. Open the site and `/wp-admin/`.
-5. Confirm exactly two users: `siteowner` and `reader`.
-6. Restart and rebuild; confirm content persists.
-7. Inspect both named volumes.
-8. Confirm Git contains no credentials or private keys.
-
-## Evaluation explanations
-
-Docker builds an image from each Dockerfile and runs each service in its own container. Compose reads `srcs/docker-compose.yml` to build and connect those images, plus their network, volumes, and secrets. The same image could be started with `docker run`, but its connections and settings would then need separate commands. Containers share the VM's Linux kernel; a VM supplies its own kernel. The root Makefile provides project commands, while `srcs/` holds service configuration.
-
-Commit only repository files. Push from the Ubuntu submission computer when ready. Keep local volumes and ignored secrets out of Git.
+For a PHP-FPM port change, update the listener in the WordPress Dockerfile, the WordPress health check in Compose, and `fastcgi_pass` in NGINX. Run `make down`, then `make` and check HTTPS. For MariaDB, also update the connection port in the WordPress startup script and the existing WordPress `DB_HOST` setting. For an NGINX public port change, update the listener, published port, and WordPress site URLs. Restore the default configuration after the exercise.

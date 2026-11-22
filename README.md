@@ -4,59 +4,32 @@
 
 ## Description
 
-Inception runs WordPress through three locally built Docker images: NGINX, WordPress with PHP-FPM, and MariaDB. NGINX alone publishes HTTPS port 443. A private Docker network connects the services. Two named volumes preserve website and database files. Each image starts from `debian:12`.
-
-`srcs/docker-compose.yml` defines the stack. The three directories in `srcs/requirements/` contain its Dockerfiles and configuration. `srcs/requirements/tools/` contains setup scripts.
+Inception runs a WordPress site in a Linux virtual machine. Docker Compose connects three locally built services: NGINX for HTTPS, WordPress with PHP-FPM, and MariaDB for the database.
 
 ## Instructions
 
-The subject requires a Linux virtual machine. Install Docker Engine and Compose there, then follow [DEV_DOC.md](DEV_DOC.md) to place Docker data beneath `/home/beciftci/data`. From the repository root:
+Follow [DEV_DOC.md](DEV_DOC.md) to set up Docker and the volume data path in your VM. In the repository root, run `make`. It creates local secret files, builds the three images, and starts the services.
 
-```sh
-make
-make verify
-```
-
-`make` creates ignored local credentials on first use. Map `beciftci.42.fr` to the VM's IP address on the machine opening the site. Open `https://beciftci.42.fr/`. The generated certificate is self-signed. On macOS, Docker Desktop can preview the stack with `127.0.0.1`, but its volume paths do not meet the subject's host-path requirement.
-
-See [USER_DOC.md](USER_DOC.md) for operation and [DEV_DOC.md](DEV_DOC.md) for setup and Linux submission notes. Keep `secrets/` out of Git. Tracked `srcs/.env` holds nonsecret settings.
+Open `https://beciftci.42.fr/` in the VM. See [USER_DOC.md](USER_DOC.md) for accounts, service status, and shutdown.
 
 ## Project description
 
-### Design choices
+The root Makefile runs `srcs/docker-compose.yml`. The service directories under `srcs/requirements/` contain the Dockerfiles, configuration, and startup scripts. Each image uses Debian 12. NGINX publishes only port 443, accepts TLS 1.2 and 1.3, and sends PHP requests to WordPress. The main processes run in the foreground. Docker restarts containers when they exit.
 
-- NGINX terminates TLS and forwards PHP requests to WordPress.
-- WordPress uses PHP-FPM without an embedded web server.
-- MariaDB accepts connections through the private Docker network.
-- Compose mounts credentials as secret files.
-- Foreground daemons own PID 1; restart policies recover crashes.
-
-### Virtual machines versus Docker
-
-The subject requires a personal Linux VM. Docker containers share its Linux kernel but isolate individual services. Docker Desktop also runs a Linux VM internally on macOS; this local preview does not demonstrate the required host data path.
-
-### Secrets versus environment variables
-
-Environment variables hold nonsecret configuration, including domain and usernames. Compose mounts passwords and TLS files from ignored `secrets/` files. Credentials do not enter Dockerfiles or Git.
-
-### Docker network versus host network
-
-The named bridge network allows service-name discovery. Compose publishes only NGINX port 443.
-
-### Docker volumes versus bind mounts
-
-Named volumes preserve data across container replacement. On Linux with the configured Docker data root, they reside beneath `/home/beciftci/data/docker/volumes/`. Bind mounts do not supply persistent website or database files.
+| Comparison | Choice in this project |
+| --- | --- |
+| Virtual machines vs Docker | A VM runs its own OS and kernel. Docker containers share the VM's kernel and isolate each service. |
+| Secrets vs environment variables | `srcs/.env` holds nonsecret settings. Compose mounts local secret files under `/run/secrets` for the services that need them. |
+| Docker network vs host network | A bridge network lets services reach one another by name. Host networking shares the host's network namespace. |
+| Docker volumes vs bind mounts | Docker manages named volumes. A bind mount maps a particular host path into a container. This project uses two named volumes for application data. |
 
 ## Resources
 
-- Inception subject, version 5.4 (provided assignment PDF)
-- [Docker Desktop installation for Mac](https://docs.docker.com/desktop/setup/install/mac-install/)
-- [Docker Engine installation for Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
-- [Docker Compose reference](https://docs.docker.com/reference/compose-file/)
+- Inception subject, version 5.4
+- [Docker Compose](https://docs.docker.com/compose/)
 - [Docker volumes](https://docs.docker.com/engine/storage/volumes/)
 - [NGINX documentation](https://nginx.org/en/docs/)
-- [WordPress requirements](https://wordpress.org/about/requirements/)
 - [WP-CLI handbook](https://make.wordpress.org/cli/handbook/)
 - [MariaDB documentation](https://mariadb.com/docs/)
 
-AI assisted with planning, Docker configuration, startup scripts, and documentation. The maintainer should understand each configuration before evaluation.
+AI assisted with planning, Docker configuration, startup scripts, and documentation.

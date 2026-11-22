@@ -1,4 +1,5 @@
 secrets/
+output/
 .DS_Store
 *.utm/
 *.qcow2
