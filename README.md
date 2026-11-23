@@ -8,11 +8,20 @@ Inception runs a WordPress site in a Linux virtual machine. Docker Compose conne
 
 ## Instructions
 
-Follow [DEV_DOC.md](DEV_DOC.md) to set up Docker and the volume data path in your VM. In the repository root, run `make`. It creates local secret files, builds the three images, and starts the services.
+Set up Docker, the data directory, and the local domain inside a Linux VM. [DEV_DOC.md](./DEV_DOC.md) has the exact paths and commands.
 
-Open `https://beciftci.42.fr/` in the VM. See [USER_DOC.md](USER_DOC.md) for accounts, service status, and shutdown.
+From the repository root inside that VM, run:
+
+```sh
+make
+make ps
+```
+
+Open `https://beciftci.42.fr/` in the VM browser. [USER_DOC.md](./USER_DOC.md) covers accounts, logs, and shutdown.
 
 ## Project description
+
+The browser connects to NGINX over HTTPS. NGINX serves static files and sends PHP requests to WordPress. WordPress stores its records in MariaDB.
 
 The root Makefile runs `srcs/docker-compose.yml`. The service directories under `srcs/requirements/` contain the Dockerfiles, configuration, and startup scripts. Each image uses Debian 12. NGINX publishes only port 443, accepts TLS 1.2 and 1.3, and sends PHP requests to WordPress. The main processes run in the foreground. Docker restarts containers when they exit.
 
