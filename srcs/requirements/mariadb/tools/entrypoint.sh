@@ -1,9 +1,6 @@
 #!/bin/sh
 set -eu
 
-: "${MYSQL_DATABASE:?MYSQL_DATABASE is required}"
-: "${MYSQL_USER:?MYSQL_USER is required}"
-
 case "$MYSQL_DATABASE" in *[!a-zA-Z0-9_]*|'') echo 'Invalid MYSQL_DATABASE' >&2; exit 1 ;; esac
 case "$MYSQL_USER" in *[!a-zA-Z0-9_]*|'') echo 'Invalid MYSQL_USER' >&2; exit 1 ;; esac
 
@@ -30,9 +27,9 @@ CREATE DATABASE IF NOT EXISTS \`$MYSQL_DATABASE\`;
 CREATE USER IF NOT EXISTS '$MYSQL_USER'@'%' IDENTIFIED BY '$db_password';
 ALTER USER '$MYSQL_USER'@'%' IDENTIFIED BY '$db_password';
 GRANT ALL PRIVILEGES ON \`$MYSQL_DATABASE\`.* TO '$MYSQL_USER'@'%';
-FLUSH PRIVILEGES;
 SQL
 chown mysql:mysql /run/mysqld/inception-init.sql
 chmod 0600 /run/mysqld/inception-init.sql
 
-exec mariadbd --user=mysql --console --init-file=/run/mysqld/inception-init.sql
+exec mariadbd --user=mysql --console --bind-address=0.0.0.0 --port=3306 \
+    --skip-name-resolve --init-file=/run/mysqld/inception-init.sql
